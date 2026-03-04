@@ -1,0 +1,270 @@
+<!doctype html>
+<html>
+    <head>
+		<title>Cube Wars</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                vertical-align: top;
+            }
+            body {
+                background: black;
+            }
+            canvas {
+                margin: 15px auto 0 auto;
+                display: block;
+                background: white;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="900" height="600"></canvas>
+    </body>
+    <script type="text/javascript">
+        let canvas = document.getElementById("canvas");
+        let can = canvas.getContext("2d");
+
+        document.onkeydown = function(e){
+          if(e.keyCode == 87){ // W
+            player.jump = true;
+          }
+          if(e.keyCode == 65){ // A
+            player.left = true;
+          }
+          if(e.keyCode == 68){ // D
+            player.right = true;
+          }
+          if(e.keyCode == 32){ // SPACE
+            player.isShooting = true;
+          }
+          if(e.keyCode == 82){
+            location.reload();
+          }
+        };
+        document.onkeyup = function(e){
+          if(e.keyCode == 87){ // W
+            player.jump = false;
+          }
+          if(e.keyCode == 65){ // A
+            player.left = false;
+          }
+          if(e.keyCode == 68){ // D
+            player.right = false;
+          }
+          if(e.keyCode == 32){ // SPACE
+            player.isShooting = false;
+          }
+        };
+
+        let gravity = 0;
+        let bullets = [];
+
+        let player = {
+            x: canvas.offsetWidth/2 - 25,
+            y: canvas.offsetHeight - 50 - 50,
+            width: 50,
+            height: 50,
+            xVel: 0,
+            yVel: 0,
+            jumpVelocity: -26,
+            speed: 8,
+            isJumping: false,
+            isShooting: false,
+            isAlive: true,
+            color: "blue",
+
+            jump: false,
+            down: false,
+            left: false,
+            right: false
+        };
+
+        let enemy = {
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 200,
+          xVel: 4,
+          yVel: 5,
+          health: 5000,
+          isAlive: true
+        };
+
+        let grass = {
+            x: 0,
+            y: canvas.offsetHeight - 50,
+            width: canvas.offsetWidth,
+            height: 50,
+            color: "green"
+        };
+
+        function Bullet(x, y, xVel){
+          this.x = x;
+          this.y = y;
+          this.width = 5;
+          this.height = 5;
+          this.xVel = xVel;
+          this.isAlive = true;
+        }
+
+        function update() {
+            processBullets();
+
+            player.xVel = 0;
+            player.yVel = 0;
+            updatePositions();
+
+            gravity += 0.75;
+            player.yVel += gravity;
+
+            player.x += player.xVel;
+            player.y += player.yVel;
+
+            processCollisions();
+
+            if(enemy.health <= 0){
+              enemy.isAlive = false;
+            }
+        }
+
+        function processBullets(){
+          if(player.isShooting && player.isAlive){
+            if(player.x + player.width/2 > enemy.x + enemy.width/2){
+              bullets.push(new Bullet(player.x + player.width/2, player.y + player.height/2, -11));
+            } else {
+              bullets.push(new Bullet(player.x + player.width/2, player.y + player.height/2, 11));
+            }
+
+            if(bullets.length > 100){
+              bullets.shift();
+            }
+          }
+        }
+
+        function processCollisions(){
+            //grass
+            if(player.y + player.height >= grass.y){
+                player.y = grass.y - player.height;
+                gravity = 0;
+                player.isJumping = false;
+            }
+            //player screen bounds
+            if(player.x < 0){
+              player.x = 0;
+            }
+            if(player.x + player.height > canvas.offsetWidth){
+              player.x = canvas.offsetWidth - player.width;
+            }
+
+            //enemy
+            if(enemy.x < 0 || enemy.x + enemy.width > canvas.offsetWidth){
+              enemy.xVel = -enemy.xVel;
+            }
+            if(enemy.y < 0 || enemy.y + enemy.height > grass.y){
+              enemy.yVel = -enemy.yVel;
+            }
+
+            //bullet-enemy
+            bullets.forEach(bullet => {
+              if(bullet.isAlive){
+                if(bullet.x + bullet.width >= enemy.x
+                  && bullet.x <= enemy.x + enemy.width
+                  && bullet.y + bullet.height >= enemy.y
+                  && bullet.y <= enemy.y + enemy.height){
+                    enemy.health -= 1;
+                    bullet.isAlive = false;
+                }
+              }
+            });
+
+            //enemy-player
+            if(enemy.isAlive){
+              if(player.x + player.width >= enemy.x
+                && player.x <= enemy.x + enemy.width
+                && player.y + player.height >= enemy.y
+                && player.y <= enemy.y + enemy.height){
+                  player.isAlive = false;
+                  bullets = [];
+              }
+            }
+        }
+
+        function render() {
+            can.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+
+            //enemy
+            if(!enemy.isAlive){
+              can.fillStyle = "green";
+              can.font = "bold 75px Arial";
+              can.fillText("YOU WIN!!", 260,  canvas.offsetHeight/2);
+            } else {
+              can.fillStyle = "red";
+              can.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+              //health
+              can.fillStyle = "black";
+              can.font = "bold 24px Arial";
+              can.fillText("Enemy Health:" + enemy.health, 15, 24 + 10);
+            }
+
+            //player
+            if(!player.isAlive){
+              can.fillStyle = "brown";
+              can.font = "bold 50px Arial";
+              can.fillText("YOU LOSE!!", 300, canvas.offsetHeight/2 + 25);
+            } else {
+              can.fillStyle = player.color;
+              can.fillRect(player.x, player.y, player.width, player.height);
+            }
+
+            //bullets
+            can.fillStyle = "brown";
+            if(enemy.isAlive){
+              bullets.forEach(bullet => {
+                if(bullet.isAlive){
+                  can.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                }
+              });
+            }
+
+            //grass
+            can.fillStyle = grass.color;
+            can.fillRect(grass.x, grass.y, grass.width, grass.height);
+
+        }
+
+
+        function tick() {
+            update();
+            render();
+        }
+
+        function updatePositions(){
+          //player
+          if(player.jump){
+            if(!player.isJumping){
+              player.isJumping = true;
+              gravity = player.jumpVelocity;
+            }
+          }
+          if(player.left){
+            player.xVel -= player.speed;
+          }
+          if(player.right){
+            player.xVel += player.speed;
+          }
+
+          //bullets
+          bullets.forEach(bullet => {
+            bullet.x += bullet.xVel;
+          });
+
+          //enemy
+          enemy.x += enemy.xVel;
+          enemy.y += enemy.yVel;
+        }
+
+        setInterval(tick, 1000/60);
+    </script>
+</html>
