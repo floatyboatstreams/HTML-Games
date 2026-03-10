@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>TrigShooter</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                vertical-align: top;
+            }
+            body {
+                background: black;
+            }
+            canvas {
+                background: #333333;
+                margin: 15px auto 0 auto;
+                display: block;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="900" height="900"></canvas>
+    </body>
+    <script type="text/javascript">
+      let canvas = document.getElementById("canvas");
+      let can = canvas.getContext("2d");
+
+      let playerCan = document.createElement("canvas");
+      playerCan.width = 50;
+      playerCan.height = 50;
+      let pCan = playerCan.getContext("2d");
+
+      canvas.onmousemove = function(e){
+        mouse.x = e.offsetX;
+        mouse.y = e.offsetY;
+      };
+      canvas.onmousedown = function(){
+        player.isShooting = true;
+      }
+      canvas.onmouseup = function(){
+        player.isShooting = false;
+      }
+      document.onkeydown = function(e){
+        if(e.keyCode == 82){
+          location.reload();
+        }
+      }
+
+      let score = 0;
+      let scoreCounter = 0;
+
+      let mouse = {
+        x: 0,
+        y: 0
+      };
+
+      let player = {
+        isAlive: true,
+        radius: 16,
+        angle: 0,
+        x: canvas.offsetWidth/2,
+        y: canvas.offsetHeight/2,
+        isShooting: false
+      };
+
+      let enemies = [];
+      let enemySpawnTimer = 0;
+      let spawnEnemies = true;
+      function Enemy(){
+        this.health = 40;
+        this.x = 50;
+        this.y = 50;
+        this.angle = 0;
+        this.angleAdjust = 0;
+        this.distance = 700;
+        this.radius = 32;
+        this.speed = 0.5;
+        this.isAlive = true;
+      }
+
+      let bullets = [];
+      let bulletSpeed = 7;
+      function Bullet(velX, velY){
+        this.x = canvas.offsetWidth/2 - 3,
+        this.y = canvas.offsetHeight/2 - 3,
+        this.width = 6;
+        this.height = 6;
+        this.velX = velX;
+        this.velY = velY;
+        this.isAlive = true;
+      }
+
+      function update(){
+        player.angle = getTheta(player.x, player.y,
+          mouse.x, mouse.y);
+
+        processEnemies();
+        processBullets();
+        processCollisions();
+
+        if(player.isAlive){
+          scoreCounter++;
+        }
+        if(scoreCounter >= 60){
+          score++;
+          scoreCounter = 0;
+        }
+      }
+
+      function processCollisions(){
+        bullets.forEach(bullet => {
+          enemies.forEach(enemy => {
+            if(bullet.isAlive && enemy.isAlive){
+              if(distance(bullet.x + bullet.width/2, bullet.y + bullet.height/2,
+                enemy.x, enemy.y) <= (bullet.width/2 + enemy.radius) ){
+
+                  bullet.isAlive = false;
+                  enemy.health--;
+                  if(enemy.health <= 0){
+                    enemy.isAlive = false;
+                  }
+              }
+            }
+          });
+        });
+        if(player.isAlive){
+          enemies.forEach(enemy => {
+            if(distance(enemy.x, enemy.y,
+              player.x, player.y) <= player.radius + enemy.radius){
+
+              player.isAlive = false;
+              spawnEnemies = false;
+              enemies.length = 0;
+            }
+          });
+        }
+      }
+
+      function distance(x1, y1, x2, y2){
+        return Math.sqrt( ((x2-x1)**2) + ((y2-y1)**2) );
+      }
+
+      function render(){
+        //render player canvas
+        pCanRender();
+
+        can.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+        //draw player
+        if(player.isAlive){
+          can.drawImage(playerCan, player.x - 50/2, player.y - 50/2,
+            50, 50);
+        }
+
+        can.fillStyle = "red";
+        enemies.forEach(enemy => {
+          if(enemy.isAlive){
+            can.beginPath();
+            can.arc(enemy.x, enemy.y, enemy.radius, 0, 2 * Math.PI);
+            can.fill();
+          }
+        });
+
+        //bullets
+        can.fillStyle = "green";
+        bullets.forEach(bullet => {
+          if(bullet.isAlive){
+            can.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+          }
+        });
+
+        can.fillStyle = "white";
+        can.font = "bold 40px monospace";
+        can.fillText("Alive: " + score + "s", 15, 40);
+
+        //lose screen
+        can.fillStyle = "red";
+        if(!player.isAlive){
+          can.font = "bold 80px monospace";
+          can.fillText("YOU LOSE!!", 250, 450);
+        }
+
+      }
+
+      function processEnemies(){
+        if(enemySpawnTimer >= 60 && spawnEnemies){
+          let newEnemy = new Enemy();
+
+          newEnemy.angle = Math.random() * (Math.PI * 2);
+          let temp = Math.floor(Math.random() * 2)
+          if(temp == 1){
+            newEnemy.angleAdjust = Math.floor(Math.random() * (Math.PI)) / 360;
+          } else {
+            newEnemy.angleAdjust = -Math.floor(Math.random() * (Math.PI)) / 360;
+          }
+          newEnemy.x = newEnemy.distance * Math.cos(newEnemy.angle)
+            + canvas.offsetWidth/2;
+          newEnemy.y = newEnemy.distance * Math.sin(newEnemy.angle)
+            + canvas.offsetHeight/2;
+
+          enemies.push(newEnemy);
+          enemySpawnTimer = 0;
+          if(enemies.length > 30){
+            enemies.shift();
+          }
+        } else {
+          enemySpawnTimer++;
+        }
+
+        enemies.forEach(enemy => {
+          if(enemy.isAlive){
+            enemy.distance -= enemy.speed;
+            enemy.angle += enemy.angleAdjust;
+            enemy.x = enemy.distance * Math.cos(enemy.angle)
+              + canvas.offsetWidth/2;
+            enemy.y = enemy.distance * Math.sin(enemy.angle)
+              + canvas.offsetHeight/2;
+          }
+        });
+      }
+
+      function processBullets(){
+        if(player.isShooting && player.isAlive){
+          let velX = bulletSpeed * Math.cos(player.angle);
+          let velY = bulletSpeed * Math.sin(player.angle);
+
+          let newBullet = new Bullet(velX, velY);
+          newBullet.x += newBullet.velX * 3;
+          newBullet.y += newBullet.velY * 3;
+
+          bullets.push(newBullet);
+          if(bullets.length > 100){
+            bullets.shift();
+          }
+        }
+
+        bullets.forEach(bullet => {
+          if(bullet.isAlive){
+            bullet.x += bullet.velX;
+            bullet.y += bullet.velY;
+          }
+        });
+      }
+
+      function pCanRender() {
+        pCan.clearRect(0, 0,
+          50, 50);
+        pCan.save();
+        pCan.translate(50/2, 50/2);
+        pCan.rotate(player.angle);
+        //player
+        pCan.fillStyle = "rgb(100, 100, 255)";
+        pCan.beginPath();
+        pCan.arc(0, 0, player.radius, 2*Math.PI, false);
+        pCan.fill();
+        //gun
+        pCan.fillStyle = "black";
+        pCan.fillRect(0, -3, 24, 6);
+        pCan.restore();
+      }
+
+      setInterval(function(){
+        update();
+        render();
+      }, 1000/60);
+
+
+
+      function getTheta(x1, y1, x2, y2){
+        let px = x1 - canvas.offsetWidth/2;
+        let py = y1 - canvas.offsetHeight/2;
+        let mx = x2 - canvas.offsetWidth/2;
+        let my = y2 - canvas.offsetHeight/2;
+
+        let adj = mx - px;
+        let opp = my - py;
+
+        if(adj == 0){
+          if(my > py){
+            return Math.PI/2;
+          } else {
+            return -Math.PI/2;
+          }
+        }
+        let angle = Math.atan(opp/adj);
+        if(mx < px){
+          angle += Math.PI;
+        }
+
+        return angle;
+      }
+    </script>
+</html>
