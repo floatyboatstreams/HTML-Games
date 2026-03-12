@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                vertical-align: top;
+            }
+            body {
+                background: black;
+            }
+            canvas {
+                background: white;
+                margin: 15px auto 0 auto;
+                display: block;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="900" height="600"></canvas>
+    </body>
+    <script type="text/javascript">
+      let canvas = document.getElementById("canvas");
+      let can = canvas.getContext("2d");
+
+      document.onkeydown = function(e){
+        if(e.keyCode == 87){ //W
+          controls.isUp = true;
+        }
+        if(e.keyCode == 83){ //S
+          controls.isDown = true;
+        }
+        if(e.keyCode == 65){ //A
+          controls.isLeft = true;
+        }
+        if(e.keyCode == 68){ //D
+          controls.isRight = true;
+        }
+        if(e.keyCode == 32){ //SPACE
+          camera.isShaking = true;
+          camera.shakeAngle = 0;
+          camera.shakeFrame = 0;
+          //camera.isFlipped = !camera.isFlipped;
+        }
+      };
+
+      let camera = {
+        x: 0,
+        y: 0,
+        width: canvas.offsetWidth,
+        height: canvas.offsetHeight,
+        isShaking: false,
+        shakeAngle: 0,
+        shakeFrame: 0,
+        filter: "rgba(0, 0, 255, 0.2)",
+        isFlipped: false
+      };
+
+      let controls = {
+        isUp: false,
+        isDown: false,
+        isLeft: false,
+        isRight: false
+      };
+
+      let player = {
+        x: 0,
+        y: 0,
+        width: 32,
+        height: 32
+      };
+
+      let obstacle = {
+        x: 1,
+        y: 1,
+        width: 32,
+        height: 32
+      };
+
+      let obstacle2 = {
+        x: 15,
+        y: 1,
+        width: 32,
+        height: 32
+      };
+
+      function update(){
+        processPlayer();
+        processCamera();
+      }
+
+      function processCamera(){
+        if(camera.isShaking){
+          if(camera.shakeFrame < 7){
+            camera.shakeAngle -= Math.PI/180;
+          } else if(camera.shakeFrame >= 7 && camera.shakeFrame < 14){
+            camera.shakeAngle += Math.PI/180;
+          } else if(camera.shakeFrame >= 14 && camera.shakeFrame < 21){
+            camera.shakeAngle -= Math.PI/180;
+          } else {
+            camera.isShaking = false;
+            camera.shakeFrame = 0;
+            camera.shakeAngle = 0;
+          }
+          camera.shakeFrame++;
+        }
+      }
+
+      function processPlayer(){
+        if(controls.isUp){
+          player.y += 1;
+          camera.y += 1;
+          controls.isUp = false;
+        }
+        if(controls.isDown){
+          player.y -= 1;
+          camera.y -= 1;
+          controls.isDown = false;
+        }
+        if(controls.isLeft){
+          player.x -= 1;
+          camera.x -= 1;
+          controls.isLeft = false;
+        }
+        if(controls.isRight){
+          player.x += 1;
+          camera.x += 1;
+          controls.isRight = false;
+        }
+      }
+
+
+      can.translate(canvas.offsetWidth/2,
+          canvas.offsetHeight/2);
+      function render(){
+        can.clearRect(-canvas.offsetWidth/2,
+          -canvas.offsetHeight/2,
+          canvas.offsetWidth,
+          canvas.offsetHeight);
+
+        can.save();
+        can.rotate(camera.shakeAngle);
+        //obstacle
+        can.fillStyle = "green";
+        renderObject(
+          obstacle.x,
+          obstacle.y,
+          obstacle.width,
+          obstacle.height
+        );
+
+        can.fillStyle = "red";
+        renderObject(
+          obstacle2.x,
+          obstacle2.y,
+          obstacle2.width,
+          obstacle2.height
+        );
+
+        //player
+        can.fillStyle = "blue";
+        renderObject(
+          player.x,
+          player.y,
+          player.width,
+          player.height
+        );
+        can.restore();
+
+        can.fillStyle = camera.filter;
+        can.fillRect(-canvas.offsetWidth/2,
+          -canvas.offsetHeight/2,
+          canvas.offsetWidth,
+          canvas.offsetHeight
+        )
+      }
+
+      function renderObject(x, y, width, height){
+        if(camera.isFlipped){
+          can.fillRect(
+            x * 32 - camera.x * 32 - 16,
+            -(-y * 32 + camera.y * 32 - 16) - 32,
+            width,
+            height
+          );
+        } else {
+          can.fillRect(
+            x * 32 - camera.x * 32 - 16,
+            -y * 32 + camera.y * 32 - 16,
+            width,
+            height
+          );
+        }
+      }
+
+      setInterval(function(){
+        update();
+        render();
+      }, 1000/60);
+
+    </script>
+</html>
